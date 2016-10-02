@@ -24,12 +24,13 @@ CA6.Grid = function (canvas_id,params) {
   var point_distance, resize_listener, last_dimensions;
   var use_mouse, counter;
   var hexagon_grid;
-
+  var grid_offset;
   use_mouse = false;
   counter = 0;
+  grid_offset = {x:0,y:0}; // grid is offset by this much
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
   default_params = {
-    hexagon_size:30,
+    hexagon_size:40,
     inner_padding:1,
     grid_lwd:1,
     grid_color:'rgba(255,190,0,0.1)',
@@ -157,7 +158,11 @@ CA6.Grid = function (canvas_id,params) {
   this.draw_grid = function () {
     // Draw the hexagon shaped grid onto the canvas
     var row_num, column_num, m, n, ctx, pos, r, n_init,d, rc6, rs6;
+    var max_row, max_col, mat_row, mat_col;
+    var yoff, xoff;
+    var row_offset2;
     ctx = self.params.context;
+    //pos = {x:0,y:0};
     pos = {x:0,y:0};
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
@@ -165,15 +170,20 @@ CA6.Grid = function (canvas_id,params) {
     column_num = self.col_count();
     ctx.save();
     ctx.lineWidth=self.params.grid_lwd;
-    for (m = 0; m <= row_num; m+=1) {
+    max_row = (row_num)*(r*1.5); // The farthest y distance
+    row_offset2 = 0;
+    for (m = -2; m < row_num+3; m+=1) {
+      yoff = grid_offset.y%(2*r*1.5)
+      mat_row = m%row_num; // which row is it in the matrix
+      pos.y = m*(r*1.5)+yoff;
       n_init = 0;
-      if(m%2==1) n_init=0.5;
-      for(n = n_init; n <= column_num+1; n+=1) {
+      if(m%2==0) n_init = 0.5;
+      for(n = -2+n_init; n <= column_num+2; n+=1) {
         ctx.beginPath();
-        //console.log(n*column_step);
         ctx.strokeStyle=self.params.grid_color;
-        pos.x = n*d;
-        pos.y = m*(r*1.5);
+        mat_col = n%row_num;
+        xoff = grid_offset.x%(d);
+        pos.x = n*d+0*xoff;
         hexagon_grid(pos.x,pos.y,r,ctx)
       }
     }
@@ -188,6 +198,9 @@ CA6.Grid = function (canvas_id,params) {
     //  return;
     //}
     clear();
+    //testing offset
+    grid_offset.x+=0.1
+    grid_offset.y+=0.1
     self.draw_grid();
     if(use_mouse && !mouse.used) {
       mouse.used = true;
@@ -254,6 +267,9 @@ CA6.Grid = function (canvas_id,params) {
     var rc6, rs6, ctx, x, y, r, c;
     color = color || '#FF0000';
     c = row_col_to_coord(m,n);
+    // experimenting with offset
+    c.x += grid_offset.x
+    c.y += grid_offset.y
     ctx = self.params.context;
     ctx.save();
     r = (self.params.hexagon_size/2)-self.params.inner_padding; // radius of circle
