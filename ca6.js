@@ -1,7 +1,6 @@
-var ca6_automata = function (ca6) {
-  // Constructor - Takes a responsive grid an build rules
-  this.grid = ca6;
-}
+"use strict";
+// Create The global namespace
+var CA6 = CA6 || {}; 
 
 var ca6 = function (canvas_id,params) {
   // Constructor - Responsive animated hexoganal grid
@@ -24,6 +23,8 @@ var ca6 = function (canvas_id,params) {
   var update_mouse_position, coord_to_row_col, ToroidalMatrix, Cell; 
   var point_distance, resize_listener, last_dimensions, do_resize;
   var use_mouse, counter;
+  var hexagon_grid;
+
   use_mouse = false;
   counter = 0;
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
@@ -322,7 +323,7 @@ var ca6 = function (canvas_id,params) {
     return Math.floor(row_count)+extra;
   }
   this.col_count = function (m) {
-    var xcross;
+    var xcross, extra;
     // column count while defined by canvas and hexagon size
     // differs depending on which row you are on
     xcross = params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3));
@@ -336,7 +337,7 @@ var ca6 = function (canvas_id,params) {
     return Math.floor(params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3)))+extra;
   }
   this.fill_hexagon = function(m,n,color) {
-    var rc6, rs6, ctx, x, y, r;
+    var rc6, rs6, ctx, x, y, r, c;
     color = color || '#FF0000';
     c = row_col_to_coord(m,n);
     ctx = params.context;
