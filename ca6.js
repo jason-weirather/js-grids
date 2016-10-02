@@ -176,14 +176,14 @@ CA6.Grid = function (canvas_id,params) {
       yoff = grid_offset.y%(2*r*1.5)
       mat_row = m%row_num; // which row is it in the matrix
       pos.y = m*(r*1.5)+yoff;
-      n_init = 0;
-      if(m%2==0) n_init = 0.5;
+      n_init = 0.5;
+      if(m%2==0) n_init = 0;
       for(n = -2+n_init; n <= column_num+2; n+=1) {
         ctx.beginPath();
         ctx.strokeStyle=self.params.grid_color;
         mat_col = n%row_num;
         xoff = grid_offset.x%(d);
-        pos.x = n*d+0*xoff;
+        pos.x = n*d+xoff;
         hexagon_grid(pos.x,pos.y,r,ctx)
       }
     }
