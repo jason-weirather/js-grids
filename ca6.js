@@ -1,8 +1,8 @@
 "use strict";
-// Create The global namespace
+// global namespace, use existing if there is one
 var CA6 = CA6 || {}; 
 
-var ca6 = function (canvas_id,params) {
+CA6.Grid = function (canvas_id,params) {
   // Constructor - Responsive animated hexoganal grid
   // Written by Jason Weirather 2016
   //   This constructor is written with cellular automata in mind,
@@ -20,8 +20,8 @@ var ca6 = function (canvas_id,params) {
   // fill_hexagon() -- given a grid position fill this hexagon with a color
   var self, params, default_params, con, hexagon, mouse, mat;
   var mainloop, clear, row_col_to_coord;
-  var update_mouse_position, coord_to_row_col, ToroidalMatrix, Cell; 
-  var point_distance, resize_listener, last_dimensions, do_resize;
+  var update_mouse_position, coord_to_row_col, Cell; 
+  var point_distance, resize_listener, last_dimensions;
   var use_mouse, counter;
   var hexagon_grid;
 
@@ -29,7 +29,7 @@ var ca6 = function (canvas_id,params) {
   counter = 0;
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
   default_params = {
-    hexagon_size:20,
+    hexagon_size:30,
     inner_padding:1,
     grid_lwd:1,
     grid_color:'rgba(255,190,0,0.1)',
@@ -39,7 +39,8 @@ var ca6 = function (canvas_id,params) {
     canvas:document.getElementById(canvas_id),
     context:document.getElementById(canvas_id).getContext("2d"),
   };
-  if (typeof in_params==='undefined') params = default_params;
+  this.params = default_params;
+  if (typeof in_params!=='undefined') this.params = in_params;
 
   self = this;
 
@@ -50,95 +51,9 @@ var ca6 = function (canvas_id,params) {
 
   // begin internal functions
   clear = function () {
-    params.context.save();
-    params.context.clearRect(0,0,params.canvas.width,params.canvas.height);
-    params.context.restore();
-  }
-  ToroidalMatrix = function () {//(m,n) {
-    var i, marr, narr, empty, self2, n;
-    this.val = [];
-    this.m = function () {
-      return self.row_count();
-    }
-    //The rows must even be whether or not it puts us a bit off canvas on the wrap
-    //if(m%2==1) m+=1;
-    //else m+=2;
-    self2 = this;
-    for (i = 0; i < this.m(); i+=1) {
-      narr = [];
-      n = self.col_count(i);
-      for (j = 0; j < n; j+=1) {
-        narr.push(new Cell(i,narr.length));
-      }
-      this.val.push(narr);
-    }
-    this.get_cells = function () {
-      var cells, i, j;
-      // return an array of all cells
-      cells = [];
-      for (i = 0; i < self2.val.length; i += 1) {
-        for (j = 0; j < self2.val[i].length; j += 1) {
-          cells.push(self2.val[i][j]);
-        }
-      }
-      return cells;
-    }
-    this.fetch = function (m,n) {
-      return self2.val[m%(self.row_count())][n%(self.col_count(m))];
-    }
-    this.fill_hexagon = function (m,n,color) {
-      var values, ms, ns, i, j, xcross, mact;
-      values = [];
-      ms = [];
-      ns = [];
-      //console.log(n+'--'+self2.val[m].length);
-      mact = m;
-      if (m===0 || m >= self2.m()) {
-        ms.push(0);
-        ms.push(self2.m());
-        mact = 0;
-      } else ms.push(m);
-      //xcross = params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3));
-      //xcross = xcross - Math.floor(xcross);
-      if(mact >= self2.val.length) mact = self2.val.length-1;
-      if (n===0 || n >= self2.val[mact].length) {
-          ns.push(0);
-          ns.push(self2.val[mact].length);
-      } else ns.push(n);
-      for(i = 0; i < ms.length; i+=1) {
-        for(j = 0; j < ns.length; j+=1) {
-          self.fill_hexagon(ms[i],ns[j],color);
-        }
-      }
-    }
-  }
-  Cell = function (m,n,in_color) {
-    var color, self2;
-    color = in_color || params.default_color;
-    this.live = false;
-    this.alpha = 0;
-    self2 = this;
-    this.draw = function () {
-      params.context.save();
-      params.context.globalAlpha = self2.alpha;
-      self.mat.fill_hexagon(m,n,color);
-      params.context.restore();
-    }
-    this.turn_on = function () {
-      self2.live = true;
-    }
-    this.turn_off = function () {
-      self2.live = false;
-    }
-    this.tick = function () {
-      if(this.live) {
-        this.alpha += params.fade_in;
-        if(this.alpha > 1) this.alpha = 1;
-      } else {
-        this.alpha -= params.fade_out;
-        if(this.alpha < 0) this.alpha = 0;
-      }
-    }
+    self.params.context.save();
+    self.params.context.clearRect(0,0,self.params.canvas.width,self.params.canvas.height);
+    self.params.context.restore();
   }
   point_distance = function(c1,c2) {
     var v1,v2;
@@ -149,11 +64,11 @@ var ca6 = function (canvas_id,params) {
   resize_listener = function (in_canvas, prev) {
     //console.log(last_dimensions.height);
     if (in_canvas.height !== prev.height || in_canvas.width !== prev.width) {
-      do_resize();
+      self.do_resize();
     }
     prev = {height:in_canvas.height,width:in_canvas.width};
   }
-  do_resize = function () {
+  this.do_resize = function () {
     var i,curr;
     //console.log(self.mat.val.length+','+self.row_count());
     while(self.mat.val.length < self.row_count()) {
@@ -161,8 +76,8 @@ var ca6 = function (canvas_id,params) {
     }
     for (i = 0; i < self.row_count(); i +=1) {
       while(self.mat.val[i].length < self.col_count(i)) {
-        curr = self.mat.val[0].length;
-        self.mat.val[i].push(new Cell(i,curr));
+        curr = self.mat.val[i].length;
+        self.mat.val[i].push(new CA6.Cell(i,curr,self));
       }
     }
     //draw_grid();
@@ -184,7 +99,7 @@ var ca6 = function (canvas_id,params) {
   coord_to_row_col = function(x,y) { // canvas coordinate to m n fo hexagon
     var r,d, m_approx, n_approx, n_init,i,j,ms,ns, coord;
     var best_dist,dist,best_m_offset, best_n_offset, m0, m1;
-    r = params.hexagon_size/2; // radius of circle
+    r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     m_approx = Math.round(y/(r*1.5));
     n_init = 0;
@@ -218,7 +133,7 @@ var ca6 = function (canvas_id,params) {
   }
   row_col_to_coord = function(m,n) {
     var r,d, n_init;
-    r = params.hexagon_size/2; // radius of circle
+    r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     n_init = 0;
     if(m%2==1) n_init=0.5;
@@ -242,21 +157,21 @@ var ca6 = function (canvas_id,params) {
   this.draw_grid = function () {
     // Draw the hexagon shaped grid onto the canvas
     var row_num, column_num, m, n, ctx, pos, r, n_init,d, rc6, rs6;
-    ctx = params.context;
+    ctx = self.params.context;
     pos = {x:0,y:0};
-    r = params.hexagon_size/2; // radius of circle
+    r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     row_num = self.row_count();
     column_num = self.col_count();
     ctx.save();
-    ctx.lineWidth=params.grid_lwd;
+    ctx.lineWidth=self.params.grid_lwd;
     for (m = 0; m <= row_num; m+=1) {
       n_init = 0;
       if(m%2==1) n_init=0.5;
       for(n = n_init; n <= column_num+1; n+=1) {
         ctx.beginPath();
         //console.log(n*column_step);
-        ctx.strokeStyle=params.grid_color;
+        ctx.strokeStyle=self.params.grid_color;
         pos.x = n*d;
         pos.y = m*(r*1.5);
         hexagon_grid(pos.x,pos.y,r,ctx)
@@ -277,7 +192,6 @@ var ca6 = function (canvas_id,params) {
     if(use_mouse && !mouse.used) {
       mouse.used = true;
       cell = self.mat.fetch(mouse.m,mouse.n);
-
       if(cell.live) cell.turn_off();
       else cell.turn_on();
       //self.mat.fill_hexagon(mouse.m,mouse.n,params.default_color);
@@ -293,15 +207,15 @@ var ca6 = function (canvas_id,params) {
   this.init = function () {
     //console.log(params.canvas.width+' width')
     //console.log(params.canvas.height+' height')
-    self.mat = new ToroidalMatrix();//self.row_count(),self.col_count());
+    self.mat = new CA6.ToroidalMatrix(self);//self.row_count(),self.col_count());
     // set up the resize listener
-    last_dimensions = {height:params.canvas.height,width:params.canvas.width};
-    (function () { setInterval(resize_listener,500,params.canvas,last_dimensions); })();  // poll for resize
+    last_dimensions = {height:self.params.canvas.height,width:self.params.canvas.width};
+    (function () { setInterval(resize_listener,500,self.params.canvas,last_dimensions); })();  // poll for resize
   };
   // add the mouse listener
   this.add_mouse_listener = function () {
     use_mouse = true;
-    params.canvas.addEventListener('mousemove',function(e) { update_mouse_position(e)});
+    self.params.canvas.addEventListener('mousemove',function(e) { update_mouse_position(e)});
   }
   // run the animation functions
   this.run_animation = function () {
@@ -310,15 +224,15 @@ var ca6 = function (canvas_id,params) {
   this.row_count = function () {
     // row count is defined by the values of the canvas and hexagon size
     var row_count, xcross, extra,r,d;
-    xcross = params.canvas.height/((params.hexagon_size/2)*1.5);
+    xcross = self.params.canvas.height/((self.params.hexagon_size/2)*1.5);
     xcross = xcross - Math.floor(xcross);
-    r = params.hexagon_size/2; // radius of circle
+    r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     extra = 0;
     //console.log(xcross+'^'+Math.sqrt(3)/2);
     //if (xcross > 0.5) extra = 2;
     //row_count = params.canvas.height/((params.hexagon_size/2)*1.5);
-    row_count = (params.canvas.height+d/2)/((params.hexagon_size/2)*1.5);
+    row_count = (self.params.canvas.height+d/2)/((self.params.hexagon_size/2)*1.5);
     if(Math.floor(row_count)%2==1) row_count +=1;
     return Math.floor(row_count)+extra;
   }
@@ -326,7 +240,7 @@ var ca6 = function (canvas_id,params) {
     var xcross, extra;
     // column count while defined by canvas and hexagon size
     // differs depending on which row you are on
-    xcross = params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3));
+    xcross = self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3));
     xcross = xcross - Math.floor(xcross);
     extra = 0;
     if (m%2===0 && xcross > 0.5) {
@@ -334,15 +248,15 @@ var ca6 = function (canvas_id,params) {
     } else if (m%2===0 && xcross <= 0.5) {
       extra = 1;
     }
-    return Math.floor(params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3)))+extra;
+    return Math.floor(self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3)))+extra;
   }
   this.fill_hexagon = function(m,n,color) {
     var rc6, rs6, ctx, x, y, r, c;
     color = color || '#FF0000';
     c = row_col_to_coord(m,n);
-    ctx = params.context;
+    ctx = self.params.context;
     ctx.save();
-    r = (params.hexagon_size/2)-params.inner_padding; // radius of circle
+    r = (self.params.hexagon_size/2)-self.params.inner_padding; // radius of circle
     rc6 = r*con.c6; // r*cos(pi/6)
     rs6 = r*con.s6;  // r*sin(pi/6)
     ctx.beginPath();
@@ -360,3 +274,106 @@ var ca6 = function (canvas_id,params) {
   }
 
 };
+
+CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
+  //console.log(hex_grid)
+  var i, marr, narr, empty, self2, n;
+  this.val = [];
+  this.m = function () {
+    return hex_grid.row_count();
+  }
+  //The rows must even be whether or not it puts us a bit off canvas on the wrap
+  //if(m%2==1) m+=1;
+  //else m+=2;
+  self2 = this;
+  for (i = 0; i < this.m(); i+=1) {
+    narr = [];
+    n = hex_grid.col_count(i);
+    for (j = 0; j < n; j+=1) {
+      narr.push(new CA6.Cell(i,narr.length,hex_grid));
+    }
+    this.val.push(narr);
+  }
+  this.get_cells = function () {
+    var cells, i, j;
+    // return an array of all cells
+    cells = [];
+    for (i = 0; i < self2.val.length; i += 1) {
+      for (j = 0; j < self2.val[i].length; j += 1) {
+        cells.push(self2.val[i][j]);
+      }
+    }
+    return cells;
+  }
+  this.fetch = function (m,n) {
+    var row, col;
+    row = m%(hex_grid.row_count())
+    if(self2.val[row]===undefined) {
+      //console.log('trouble')
+      hex_grid.do_resize(); // if we are in here something is off... try resize right away
+    }
+    col = n%(hex_grid.col_count(m))
+    if(self2.val[row][col]===undefined) {
+      //console.log('trouble2')
+      hex_grid.do_resize(); // something is off try resize right away
+    }
+    return self2.val[row][col];
+  }
+  this.fill_hexagon = function (m,n,color) {
+    var values, ms, ns, i, j, xcross, mact;
+    values = [];
+    ms = [];
+    ns = [];
+    //console.log(n+'--'+self2.val[m].length);
+    mact = m;
+    if (m===0 || m >= self2.m()) {
+      ms.push(0);
+      ms.push(self2.m());
+      mact = 0;
+    } else ms.push(m);
+    //xcross = params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3));
+    //xcross = xcross - Math.floor(xcross);
+    if(mact >= self2.val.length) mact = self2.val.length-1;
+    if (n===0 || n >= self2.val[mact].length) {
+      ns.push(0);
+      ns.push(self2.val[mact].length);
+    } else ns.push(n);
+    for(i = 0; i < ms.length; i+=1) {
+      for(j = 0; j < ns.length; j+=1) {
+        hex_grid.fill_hexagon(ms[i],ns[j],color);
+      }
+    }
+  }
+}
+CA6.Cell = function (m,n,hex_grid) {
+    var color, self2, params;
+    params = hex_grid.params;
+    color = params.default_color;
+    this.live = false;
+    this.alpha = 0;
+    self2 = this;
+    this.set_color = function (in_color) {
+      self2.color = in_color
+    }
+    this.draw = function () {
+      params.context.save();
+      params.context.globalAlpha = self2.alpha;
+      hex_grid.mat.fill_hexagon(m,n,color);
+      params.context.restore();
+    }
+    this.turn_on = function () {
+      self2.live = true;
+    }
+    this.turn_off = function () {
+      self2.live = false;
+    }
+    this.tick = function () {
+      if(this.live) {
+        this.alpha += params.fade_in;
+        if(this.alpha > 1) this.alpha = 1;
+      } else {
+        this.alpha -= params.fade_out;
+        if(this.alpha < 0) this.alpha = 0;
+      }
+    }
+}
