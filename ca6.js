@@ -30,7 +30,7 @@ CA6.Grid = function (canvas_id,params) {
   grid_offset = {x:0,y:0}; // grid is offset by this much
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
   default_params = {
-    hexagon_size:40,
+    hexagon_size:60,
     inner_padding:1,
     grid_lwd:1,
     grid_color:'rgba(255,190,0,0.1)',
@@ -100,6 +100,8 @@ CA6.Grid = function (canvas_id,params) {
   coord_to_row_col = function(x,y) { // canvas coordinate to m n fo hexagon
     var r,d, m_approx, n_approx, n_init,i,j,ms,ns, coord;
     var best_dist,dist,best_m_offset, best_n_offset, m0, m1;
+    x -= grid_offset.x;
+    y -= grid_offset.y;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     m_approx = Math.round(y/(r*1.5));
@@ -137,6 +139,7 @@ CA6.Grid = function (canvas_id,params) {
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     n_init = 0;
+    //yoff = grid_offset.y%self.col_count(self.row_count()-1);
     if(m%2==1) n_init=0.5;
     return {y:r*1.5*m,x:d*n+n_init*d};
   }
@@ -162,34 +165,76 @@ CA6.Grid = function (canvas_id,params) {
     var yoff, xoff;
     var row_offset2;
     ctx = self.params.context;
-    //pos = {x:0,y:0};
-    pos = {x:0,y:0};
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     row_num = self.row_count();
     column_num = self.col_count();
     ctx.save();
     ctx.lineWidth=self.params.grid_lwd;
-    max_row = (row_num)*(r*1.5); // The farthest y distance
-    row_offset2 = 0;
     for (m = -2; m < row_num+3; m+=1) {
-      yoff = grid_offset.y%(2*r*1.5)
-      mat_row = m%row_num; // which row is it in the matrix
-      pos.y = m*(r*1.5)+yoff;
       n_init = 0.5;
       if(m%2==0) n_init = 0;
       for(n = -2+n_init; n <= column_num+2; n+=1) {
         ctx.beginPath();
         ctx.strokeStyle=self.params.grid_color;
-        mat_col = n%row_num;
-        xoff = grid_offset.x%(d);
-        pos.x = n*d+xoff;
+        pos = self.row_col_to_canvas_coord(m,n); //convert a matrix coordinate to a canvas coord
         hexagon_grid(pos.x,pos.y,r,ctx)
       }
     }
     ctx.restore();
   }
-  
+  this.row_col_to_canvas_coord = function (m,n) {
+    var r, d, pos, n_init, yoff, xoff;
+    r = self.params.hexagon_size/2; // radius of circle
+    d = r*Math.sqrt(3);
+    pos = {x:0,y:0};
+    yoff = grid_offset.y%(2*r*1.5)
+    pos.y = m*(r*1.5)+yoff;
+    n_init = 0.5;
+    if(m%2==0) n_init = 0;
+    xoff = grid_offset.x%(d);
+    pos.x = n*d+xoff;
+    return pos
+  }
+  this.row_col_to_canvas_coord2 = function (m,n) {
+    var r, d, pos, n_init, yoff, xoff, xset, cwid, rwid;
+    r = self.params.hexagon_size/2; // radius of circle
+    d = r*Math.sqrt(3);
+    pos = {x:0,y:0};
+    rwid = self.row_count()*r*1.5;
+    yoff = grid_offset.y%(rwid);
+    pos.y = m*(r*1.5)+yoff;
+    if (pos.y > rwid) {
+      pos.y -= rwid;
+    }
+    n_init = 0;
+
+    //if (m%2==1) { n_init=0.5; }
+    //xset = n*d+grid_offset.x%(d*self.col_count(m))+d*n_init;
+    //if(xset > d*(self.col_count(m))) {
+    //  xset -= d*self.col_count(m)+(d*2*n_init);
+    //}
+    cwid = d*self.col_count(m);
+    xset = 0;
+    if(m%2==0) {
+      // even row case
+      //console.log(self.col_count(m));
+      xset = n*d+grid_offset.x%cwid;
+      if (xset > cwid) {
+        //console.log('hi');
+        xset-=cwid;
+      }
+    } else {
+      //console.log(self.col_count(m));
+      xset = n*d+grid_offset.x%cwid;
+      if(xset > cwid) {
+        xset -= cwid;
+      }
+      xset+=d*0.5;
+    }
+    pos.x = xset;
+    return pos
+  }
   mainloop = function () {
     var cell, cells, i;
     self.counter +=1;
@@ -199,8 +244,8 @@ CA6.Grid = function (canvas_id,params) {
     //}
     clear();
     //testing offset
-    grid_offset.x+=0.1
-    grid_offset.y+=0.1
+    grid_offset.x+=0.6;
+    grid_offset.y+=0.8;
     self.draw_grid();
     if(use_mouse && !mouse.used) {
       mouse.used = true;
@@ -255,21 +300,32 @@ CA6.Grid = function (canvas_id,params) {
     // differs depending on which row you are on
     xcross = self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3));
     xcross = xcross - Math.floor(xcross);
-    extra = 0;
-    if (m%2===0 && xcross > 0.5) {
-      extra = 1;
-    } else if (m%2===0 && xcross <= 0.5) {
-      extra = 1;
-    }
+    extra = 1;
+    //if (m%2===0 && xcross > 0.5) {
+    //  extra = 1;
+    //} else if (m%2===0 && xcross <= 0.5) {
+    //  extra = 1;
+    //}
     return Math.floor(self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3)))+extra;
   }
   this.fill_hexagon = function(m,n,color) {
-    var rc6, rs6, ctx, x, y, r, c;
+    var rc6, rs6, ctx, x, y, r, c,r1,d1,offset,v,n_init;
+    r1 = self.params.hexagon_size/2; // radius of circle
+    d1 = r1*Math.sqrt(3);
     color = color || '#FF0000';
-    c = row_col_to_coord(m,n);
+    c = row_col_to_coord(m,n); // get the canvas coordinate
     // experimenting with offset
-    c.x += grid_offset.x
-    c.y += grid_offset.y
+    //offset = grid_offset.x;
+    offset = grid_offset.x%(self.col_count(m)*d1);
+    if (c.x+offset > (self.col_count(m))*d1) {
+      offset=offset-(self.col_count(m)*d1);
+    }
+    c.x += offset;
+    //v = coord_to_row_col(c.x,c.y);
+    //console.log(c.x)
+    //console.log(v)
+    c.y += grid_offset.y;
+    c = this.row_col_to_canvas_coord2(m,n);
     ctx = self.params.context;
     ctx.save();
     r = (self.params.hexagon_size/2)-self.params.inner_padding; // radius of circle
@@ -324,11 +380,15 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   this.fetch = function (m,n) {
     var row, col;
     row = m%(hex_grid.row_count())
+    if (m < 0) row = hex_grid.row_count()+row;
     if(self2.val[row]===undefined) {
       //console.log('trouble')
       hex_grid.do_resize(); // if we are in here something is off... try resize right away
     }
     col = n%(hex_grid.col_count(m))
+    //console.log(col);
+    if (n <  0) col = hex_grid.col_count(m)+ col;
+    //console.log(col);
     if(self2.val[row][col]===undefined) {
       //console.log('trouble2')
       hex_grid.do_resize(); // something is off try resize right away
