@@ -30,9 +30,9 @@ CA6.Grid = function (canvas_id,params) {
   grid_offset = {x:0,y:0}; // grid is offset by this much
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
   default_params = {
-    hexagon_size:60,
-    inner_padding:1,
-    grid_lwd:1,
+    hexagon_size:150,
+    inner_padding:10,
+    grid_lwd:6,
     grid_color:'rgba(255,190,0,0.1)',
     default_color:'rgba(200,200,200,0.3)',
     fade_in:0.05,
@@ -198,7 +198,7 @@ CA6.Grid = function (canvas_id,params) {
   }
   this.row_col_to_canvas_coord2 = function (m,n) {
     // return array of squares that match
-    var r, d, pos, n_init, yoff, xoff, xset, cwid, rwid;
+    var r, d, pos, n_init, yoff, xoff, xset, cwid, rwid, outputs, padding;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     pos = {x:0,y:0};
@@ -241,19 +241,41 @@ CA6.Grid = function (canvas_id,params) {
       pos.y = rwid+pos.y;
     }
     // we actually only need to draw all these for edge cases
-    return [{x:pos.x-cwid,y:pos.y-rwid},{x:pos.x-cwid,y:pos.y}, {x:pos.x,y:pos.y-rwid},{x:pos.x,y:pos.y},{x:pos.x+cwid,y:pos.y}, {x:pos.x,y:pos.y+rwid},{x:pos.x+cwid,y:pos.y+rwid}];
+    //return [{x:pos.x-cwid,y:pos.y-rwid},{x:pos.x-cwid,y:pos.y}, {x:pos.x,y:pos.y-rwid},{x:pos.x,y:pos.y},{x:pos.x+cwid,y:pos.y}, {x:pos.x,y:pos.y+rwid},{x:pos.x+cwid,y:pos.y+rwid}];
+    padding = 1;
+    outputs = [];
+    if (pos.y > r*1.5*self.row_count()-r*1.5*padding) {
+      outputs.push({x:pos.x,y:pos.y-rwid});
+    }
+    if (pos.x > d*self.col_count(m)-d*padding) {
+      outputs.push({x:pos.x-cwid,y:pos.y});
+    }
+    if (pos.y > r*1.5*self.row_count()-r*1.5*padding && pos.x > d*self.col_count(m)-d*padding) {
+      outputs.push({x:pos.x-cwid,y:pos.y-rwid});
+    }
+    if (pos.y < r*1.5*padding) {
+      outputs.push({x:pos.x,y:pos.y+rwid});
+    }
+    if (pos.x < d*padding) {
+      outputs.push({x:pos.x+cwid,y:pos.y});
+    }
+    if (pos.x < d*padding && pos.y < r*1.5*padding) {
+      outputs.push({x:pos.x+cwid,y:pos.y+rwid});
+    }
+    outputs.push({x:pos.x,y:pos.y});
+    return outputs;
   }
   mainloop = function () {
     var cell, cells, i;
     self.counter +=1;
-    //if(self.counter%4==1) {
+    //if(self.counter%100>0) {
     //  requestAnimationFrame(mainloop); // skip out every other frame
     //  return;
     //}
     clear();
     //testing offset
-    grid_offset.x+=1;
-    grid_offset.y+=1;
+    grid_offset.x-=1;
+    grid_offset.y-=1;
     self.draw_grid();
     if(use_mouse && !mouse.used) {
       mouse.used = true;
