@@ -197,6 +197,7 @@ CA6.Grid = function (canvas_id,params) {
     return pos
   }
   this.row_col_to_canvas_coord2 = function (m,n) {
+    // return array of squares that match
     var r, d, pos, n_init, yoff, xoff, xset, cwid, rwid;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
@@ -233,7 +234,14 @@ CA6.Grid = function (canvas_id,params) {
       xset+=d*0.5;
     }
     pos.x = xset;
-    return pos
+    if (pos.x < 0) {
+      pos.x = cwid+pos.x;
+    }
+    if (pos.y < 0) {
+      pos.y = rwid+pos.y;
+    }
+    // we actually only need to draw all these for edge cases
+    return [{x:pos.x-cwid,y:pos.y-rwid},{x:pos.x-cwid,y:pos.y}, {x:pos.x,y:pos.y-rwid},{x:pos.x,y:pos.y},{x:pos.x+cwid,y:pos.y}, {x:pos.x,y:pos.y+rwid},{x:pos.x+cwid,y:pos.y+rwid}];
   }
   mainloop = function () {
     var cell, cells, i;
@@ -244,8 +252,8 @@ CA6.Grid = function (canvas_id,params) {
     //}
     clear();
     //testing offset
-    grid_offset.x+=0.6;
-    grid_offset.y+=0.8;
+    grid_offset.x+=1;
+    grid_offset.y+=1;
     self.draw_grid();
     if(use_mouse && !mouse.used) {
       mouse.used = true;
@@ -309,7 +317,7 @@ CA6.Grid = function (canvas_id,params) {
     return Math.floor(self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3)))+extra;
   }
   this.fill_hexagon = function(m,n,color) {
-    var rc6, rs6, ctx, x, y, r, c,r1,d1,offset,v,n_init;
+    var rc6, rs6, ctx, x, y, r, c,r1,d1,offset,v,n_init, i, cs;
     r1 = self.params.hexagon_size/2; // radius of circle
     d1 = r1*Math.sqrt(3);
     color = color || '#FF0000';
@@ -325,24 +333,29 @@ CA6.Grid = function (canvas_id,params) {
     //console.log(c.x)
     //console.log(v)
     c.y += grid_offset.y;
-    c = this.row_col_to_canvas_coord2(m,n);
-    ctx = self.params.context;
-    ctx.save();
-    r = (self.params.hexagon_size/2)-self.params.inner_padding; // radius of circle
-    rc6 = r*con.c6; // r*cos(pi/6)
-    rs6 = r*con.s6;  // r*sin(pi/6)
-    ctx.beginPath();
-    ctx.moveTo(c.x+rc6,c.y+rs6);
-    ctx.lineTo(c.x+rc6,c.y+rs6);
-    ctx.lineTo(c.x,c.y+r);
-    ctx.lineTo(c.x-rc6,c.y+rs6);
-    ctx.lineTo(c.x-rc6,c.y-rs6);
-    ctx.lineTo(c.x,c.y-r);
-    ctx.lineTo(c.x+rc6,c.y-rs6);
-    ctx.closePath();
-    ctx.fillStyle=color;
-    ctx.fill();
-    ctx.restore();
+    cs = this.row_col_to_canvas_coord2(m,n);
+    // these c's
+    for (i = 0; i < cs.length; i+=1) {
+      c = cs[i];
+      ctx = self.params.context;
+      ctx.save();
+      //ctx.translate(0,-r1*3);
+      r = (self.params.hexagon_size/2)-self.params.inner_padding; // radius of circle
+      rc6 = r*con.c6; // r*cos(pi/6)
+      rs6 = r*con.s6;  // r*sin(pi/6)
+      ctx.beginPath();
+      ctx.moveTo(c.x+rc6,c.y+rs6);
+      ctx.lineTo(c.x+rc6,c.y+rs6);
+      ctx.lineTo(c.x,c.y+r);
+      ctx.lineTo(c.x-rc6,c.y+rs6);
+      ctx.lineTo(c.x-rc6,c.y-rs6);
+      ctx.lineTo(c.x,c.y-r);
+      ctx.lineTo(c.x+rc6,c.y-rs6);
+      ctx.closePath();
+      ctx.fillStyle=color;
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
 };
@@ -379,15 +392,20 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   }
   this.fetch = function (m,n) {
     var row, col;
-    row = m%(hex_grid.row_count())
+    row = m%(hex_grid.row_count());
     if (m < 0) row = hex_grid.row_count()+row;
+    row = row%(hex_grid.row_count());
     if(self2.val[row]===undefined) {
       //console.log('trouble')
       hex_grid.do_resize(); // if we are in here something is off... try resize right away
     }
-    col = n%(hex_grid.col_count(m))
+    col = n%(hex_grid.col_count(row))
+    if (n <  0) col = hex_grid.col_count(row)+ col;
+    col = col%(hex_grid.col_count(row))
+    if(self2.val[row]===undefined) {
+      console.log('empty,'+row+','+col+','+hex_grid.row_count()+','+hex_grid.col_count(row));
+    }
     //console.log(col);
-    if (n <  0) col = hex_grid.col_count(m)+ col;
     //console.log(col);
     if(self2.val[row][col]===undefined) {
       //console.log('trouble2')
@@ -402,18 +420,20 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
     ns = [];
     //console.log(n+'--'+self2.val[m].length);
     mact = m;
-    if (m===0 || m >= self2.m()) {
-      ms.push(0);
-      ms.push(self2.m());
-      mact = 0;
-    } else ms.push(m);
+    //if (m===0 || m >= self2.m()) {
+    //  ms.push(0);
+    //  ms.push(self2.m());
+    //  mact = 0;
+    //} else ms.push(m);
+    ms.push(m);
     //xcross = params.canvas.width/((params.hexagon_size/2)*Math.sqrt(3));
     //xcross = xcross - Math.floor(xcross);
     if(mact >= self2.val.length) mact = self2.val.length-1;
-    if (n===0 || n >= self2.val[mact].length) {
-      ns.push(0);
-      ns.push(self2.val[mact].length);
-    } else ns.push(n);
+    //if (n===0 || n >= self2.val[mact].length) {
+    //  ns.push(0);
+    //  ns.push(self2.val[mact].length);
+    //} else ns.push(n);
+    ns.push(n);
     for(i = 0; i < ms.length; i+=1) {
       for(j = 0; j < ns.length; j+=1) {
         hex_grid.fill_hexagon(ms[i],ns[j],color);
