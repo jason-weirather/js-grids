@@ -72,11 +72,11 @@ CA6.Grid = function (canvas_id,params) {
   this.do_resize = function () {
     var i,curr;
     //console.log(self.mat.val.length+','+self.row_count());
-    while(self.mat.val.length < self.row_count()) {
+    while(self.mat.val.length < self.canvas_row_count()) {
       self.mat.val.push([]);
     }
     for (i = 0; i < self.row_count(); i +=1) {
-      while(self.mat.val[i].length < self.col_count(i)) {
+      while(self.mat.val[i].length < self.canvas_col_count(i)) {
         curr = self.mat.val[i].length;
         self.mat.val[i].push(new CA6.Cell(i,curr,self));
       }
@@ -167,8 +167,8 @@ CA6.Grid = function (canvas_id,params) {
     ctx = self.params.context;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
-    row_num = self.row_count();
-    column_num = self.col_count();
+    row_num = self.canvas_row_count();
+    column_num = self.canvas_col_count(row_num);
     ctx.save();
     ctx.lineWidth=self.params.grid_lwd;
     for (m = -2; m < row_num+3; m+=1) {
@@ -288,6 +288,12 @@ CA6.Grid = function (canvas_id,params) {
     mainloop();
   }
   this.row_count = function () {
+    return self.mat.val.length;
+  }
+  this.col_count = function (m) {
+    return self.mat.val[m].length;
+  }
+  this.canvas_row_count = function () {
     // row count is defined by the values of the canvas and hexagon size
     var row_count, xcross, extra,r,d;
     xcross = self.params.canvas.height/((self.params.hexagon_size/2)*1.5);
@@ -302,7 +308,7 @@ CA6.Grid = function (canvas_id,params) {
     if(Math.floor(row_count)%2==1) row_count +=1;
     return Math.floor(row_count)+extra;
   }
-  this.col_count = function (m) {
+  this.canvas_col_count = function (m) {
     var xcross, extra;
     // column count while defined by canvas and hexagon size
     // differs depending on which row you are on
@@ -365,7 +371,8 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   var i, marr, narr, empty, self2, n;
   this.val = [];
   this.m = function () {
-    return hex_grid.row_count();
+    //console.log('hi');
+    return hex_grid.canvas_row_count();
   }
   //The rows must even be whether or not it puts us a bit off canvas on the wrap
   //if(m%2==1) m+=1;
@@ -373,7 +380,7 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   self2 = this;
   for (i = 0; i < this.m(); i+=1) {
     narr = [];
-    n = hex_grid.col_count(i);
+    n = hex_grid.canvas_col_count(i);
     for (j = 0; j < n; j+=1) {
       narr.push(new CA6.Cell(i,narr.length,hex_grid));
     }
