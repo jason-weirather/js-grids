@@ -262,6 +262,12 @@ CA6.Grid = function (canvas_id,params) {
     if (pos.x < d*padding && pos.y < r*1.5*padding) {
       outputs.push({x:pos.x+cwid,y:pos.y+rwid});
     }
+    if (pos.x < d*padding && pos.y > r*1.5*self.row_count()-r*1.5*padding) {
+      outputs.push({x:pos.x+cwid,y:pos.y-rwid});
+    }
+    if (pos.x > d*self.col_count(m)-d*padding && pos.y < r*1.5*padding) {
+      outputs.push({x:pos.x-cwid,y:pos.y+rwid});
+    }
     outputs.push({x:pos.x,y:pos.y});
     return outputs;
   }
