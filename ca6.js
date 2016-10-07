@@ -25,14 +25,14 @@ CA6.Grid = function (canvas_id,params) {
   var use_mouse, counter;
   var hexagon_grid;
   var grid_offset;
-  use_mouse = false;
+  use_mouse = true;
   counter = 0;
   grid_offset = {x:0,y:0}; // grid is offset by this much
   mouse = {x:0,y:0,m:0,n:0,last_m:0,last_n:0,used:true};
   default_params = {
-    hexagon_size:150,
-    inner_padding:10,
-    grid_lwd:6,
+    hexagon_size:80,
+    inner_padding:5,
+    grid_lwd:3,
     grid_color:'rgba(255,190,0,0.1)',
     default_color:'rgba(200,200,200,0.3)',
     fade_in:0.05,
@@ -160,27 +160,45 @@ CA6.Grid = function (canvas_id,params) {
 
   this.draw_grid = function () {
     // Draw the hexagon shaped grid onto the canvas
-    var row_num, column_num, m, n, ctx, pos, r, n_init,d, rc6, rs6;
+    var row_num, column_num, m, n, ctx, pos, r, n_init,d, rc6, rs6, i, j, cells;
     var max_row, max_col, mat_row, mat_col;
     var yoff, xoff;
-    var row_offset2;
+    var row_offset2, positions;
     ctx = self.params.context;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
-    row_num = self.canvas_row_count();
-    column_num = self.canvas_col_count(row_num);
+    row_num = self.mat.m();
+    column_num = self.col_count(row_num);
+    cells = self.mat.get_cells();
     ctx.save();
     ctx.lineWidth=self.params.grid_lwd;
-    for (m = -2; m < row_num+3; m+=1) {
-      n_init = 0.5;
-      if(m%2==0) n_init = 0;
-      for(n = -2+n_init; n <= column_num+2; n+=1) {
+    for (i = 0; i < cells.length; i+=1) {
+      //console.log(i);
+      m = cells[i].m;
+      n = cells[i].n;
+      positions = self.row_col_to_canvas_coords(m,n); //convert a matrix coordinate to a canvas coord
+      for(j = 0; j < positions.length; j+=1) {
+        pos = positions[j];
         ctx.beginPath();
         ctx.strokeStyle=self.params.grid_color;
-        pos = self.row_col_to_canvas_coord(m,n); //convert a matrix coordinate to a canvas coord
-        hexagon_grid(pos.x,pos.y,r,ctx)
+        //replacing
+        //console.log(m+','+n)
+        hexagon_grid(pos.x,pos.y,r,ctx);
       }
     }
+    //for (m = 0; m < row_num; m+=1) {
+    //  n_init = 0.5;
+    //  if(m%2==0) n_init = 0;
+    //  for(n = 0; n < column_num; n+=1) {
+    //    ctx.beginPath();
+    //    ctx.strokeStyle=self.params.grid_color;
+    //    //replacing
+    //    //console.log(m+','+n)
+    //    pos = self.row_col_to_single_canvas_coord(m,n); //convert a matrix coordinate to a canvas coord
+    //    
+    //    hexagon_grid(pos.x,pos.y,r,ctx)
+    //  }
+    //}
     ctx.restore();
   }
   this.row_col_to_canvas_coord = function (m,n) {
@@ -196,9 +214,8 @@ CA6.Grid = function (canvas_id,params) {
     pos.x = n*d+xoff;
     return pos
   }
-  this.row_col_to_canvas_coord2 = function (m,n) {
-    // return array of squares that match
-    var r, d, pos, n_init, yoff, xoff, xset, cwid, rwid, outputs, padding;
+  this.row_col_to_single_canvas_coord = function (m,n) {
+    var r, d, pos, rwid, yoff, n_init, cwid, xset;
     r = self.params.hexagon_size/2; // radius of circle
     d = r*Math.sqrt(3);
     pos = {x:0,y:0};
@@ -210,19 +227,12 @@ CA6.Grid = function (canvas_id,params) {
     }
     n_init = 0;
 
-    //if (m%2==1) { n_init=0.5; }
-    //xset = n*d+grid_offset.x%(d*self.col_count(m))+d*n_init;
-    //if(xset > d*(self.col_count(m))) {
-    //  xset -= d*self.col_count(m)+(d*2*n_init);
-    //}
     cwid = d*self.col_count(m);
     xset = 0;
     if(m%2==0) {
       // even row case
-      //console.log(self.col_count(m));
       xset = n*d+grid_offset.x%cwid;
       if (xset > cwid) {
-        //console.log('hi');
         xset-=cwid;
       }
     } else {
@@ -240,9 +250,36 @@ CA6.Grid = function (canvas_id,params) {
     if (pos.y < 0) {
       pos.y = rwid+pos.y;
     }
-    // we actually only need to draw all these for edge cases
-    //return [{x:pos.x-cwid,y:pos.y-rwid},{x:pos.x-cwid,y:pos.y}, {x:pos.x,y:pos.y-rwid},{x:pos.x,y:pos.y},{x:pos.x+cwid,y:pos.y}, {x:pos.x,y:pos.y+rwid},{x:pos.x+cwid,y:pos.y+rwid}];
+    return pos;
+  }
+  this.is_near_canvas = function (pos) {
+    var r, d, padding;
     padding = 1;
+    r = self.params.hexagon_size/2; // radius of circle
+    d = r*Math.sqrt(3);
+    if (pos.y > self.canvas_row_count()*r*1.5+r*1.5*padding*2 && pos.y < self.row_count()*r*1.5-r*1.5*padding*2) {
+      //console.log('skipping off screen draw');
+      return false;
+    }
+    if (pos.x > self.canvas_col_count(0)*d+d*padding*2 && pos.x < d*self.col_count(0)-d*padding*2) {
+      //console.log('skipping off screen draw2');
+      return false;
+    }
+    return true;
+  }
+  this.row_col_to_canvas_coords = function (m,n) {
+    // return array of squares that match
+    var r, d, pos, rwid, cwid, outputs, padding;
+    r = self.params.hexagon_size/2; // radius of circle
+    d = r*Math.sqrt(3);
+    rwid = self.row_count()*r*1.5;
+    cwid = d*self.col_count(m);
+    pos = self.row_col_to_single_canvas_coord(m,n);
+    padding = 1;
+    // we actually only need to draw all these for edge cases
+    if (!self.is_near_canvas(pos)) {
+      return [];
+    }
     outputs = [];
     if (pos.y > r*1.5*self.row_count()-r*1.5*padding) {
       outputs.push({x:pos.x,y:pos.y-rwid});
@@ -274,14 +311,22 @@ CA6.Grid = function (canvas_id,params) {
   mainloop = function () {
     var cell, cells, i;
     self.counter +=1;
+    if(self.row_count() < 200) {
+      self.mat.add_row(self);
+    }
+    if(self.col_count(0) < 200) {
+      self.mat.add_column(self);
+    }
+    //self.mat.add_column(self);
+    //console.log(self.mat.val.length+','+self.mat.val[0].length);
     //if(self.counter%100>0) {
     //  requestAnimationFrame(mainloop); // skip out every other frame
     //  return;
     //}
     clear();
     //testing offset
-    grid_offset.x-=1;
-    grid_offset.y-=1;
+    grid_offset.x+=0.4;
+    grid_offset.y-=0.2;
     self.draw_grid();
     if(use_mouse && !mouse.used) {
       mouse.used = true;
@@ -351,7 +396,8 @@ CA6.Grid = function (canvas_id,params) {
     return Math.floor(self.params.canvas.width/((self.params.hexagon_size/2)*Math.sqrt(3)))+extra;
   }
   this.fill_hexagon = function(m,n,color) {
-    var rc6, rs6, ctx, x, y, r, c,r1,d1,offset,v,n_init, i, cs;
+    var rc6, rs6, ctx, x, y, r, c,r1,d1,offset,v,n_init, i, cs, debug, fsize;
+    debug = true;
     r1 = self.params.hexagon_size/2; // radius of circle
     d1 = r1*Math.sqrt(3);
     color = color || '#FF0000';
@@ -367,7 +413,7 @@ CA6.Grid = function (canvas_id,params) {
     //console.log(c.x)
     //console.log(v)
     c.y += grid_offset.y;
-    cs = this.row_col_to_canvas_coord2(m,n);
+    cs = this.row_col_to_canvas_coords(m,n);
     // these c's
     for (i = 0; i < cs.length; i+=1) {
       c = cs[i];
@@ -388,6 +434,18 @@ CA6.Grid = function (canvas_id,params) {
       ctx.closePath();
       ctx.fillStyle=color;
       ctx.fill();
+      if (debug) {
+        ctx.beginPath();
+        ctx.closePath();
+        ctx.fillStyle='#FF0000';
+        fsize=20;
+        fsize = fsize*(self.params.hexagon_size/100);
+        ctx.font=fsize+"px Verdana";
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(m+','+n,c.x,c.y);
+        ctx.fill();
+      }
       ctx.restore();
     }
   }
@@ -396,8 +454,40 @@ CA6.Grid = function (canvas_id,params) {
 
 CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   //console.log(hex_grid)
-  var i, marr, narr, empty, self2, n;
+  var i, marr, narr, empty, self2, n, j;
   this.val = [];
+  self2 = this;
+  this.add_row = function (hex_grid) {
+    var x, curr_col_count, curr_row_count,i, curr;
+    x = 2;
+    curr_row_count = self2.val.length;
+    curr_col_count = self2.val[0].length;
+    // add x rows
+    while(self2.val.length < curr_row_count+x) {
+      self2.val.push([]);
+    }
+    for (i = 0; i < self2.val.length; i +=1) {
+      while(self2.val[i].length < curr_col_count) {
+        curr = self2.val[i].length;
+        self2.val[i].push(new CA6.Cell(i,curr,hex_grid));
+      }
+    }
+
+  }
+  this.add_column = function (hex_grid) {
+    var x, curr_col_count, i, curr;
+    x = 2;
+    //curr_col_count = self2.val[0].length;
+    //curr_col_count = self.col_count();
+    for (i = 0; i < self2.val.length; i +=1) {
+      curr_col_count = self2.val[i].length;
+      while(self2.val[i].length < curr_col_count+x) {
+        curr = self2.val[i].length;
+        self2.val[i].push(new CA6.Cell(i,curr,hex_grid));
+      }
+    }
+
+  }
   this.m = function () {
     //console.log('hi');
     return hex_grid.canvas_row_count();
@@ -405,7 +495,8 @@ CA6.ToroidalMatrix = function (hex_grid) {//(m,n) {
   //The rows must even be whether or not it puts us a bit off canvas on the wrap
   //if(m%2==1) m+=1;
   //else m+=2;
-  self2 = this;
+
+  // INITIALIZE BY CANVAS HERE
   for (i = 0; i < this.m(); i+=1) {
     narr = [];
     n = hex_grid.canvas_col_count(i);
@@ -482,6 +573,8 @@ CA6.Cell = function (m,n,hex_grid) {
     color = params.default_color;
     this.live = false;
     this.alpha = 0;
+    this.m = m;
+    this.n = n;
     self2 = this;
     this.set_color = function (in_color) {
       self2.color = in_color
