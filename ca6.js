@@ -16,8 +16,8 @@ CA6.Grid = function (canvas_id,params) {
   // init() -- create the toroidal matrix should be run before drawing
   // draw_grid() -- will draw the background grid onto the canvas
   // row_count() -- return the number of rows on the current canvas
-  // column_count() -- given a row number (index 0) return the column count
-  // fill_hexagon() -- given a grid position fill this hexagon with a color
+  // column_count(m) -- given a row number (index 0) return the column count
+  // fill_hexagon(m,n) -- given a grid position fill this hexagon with a color
   var self, params, default_params, con, hexagon, mouse, mat;
   var mainloop, clear, row_col_to_coord;
   var update_mouse_position, coord_to_row_col, Cell; 
@@ -52,26 +52,30 @@ CA6.Grid = function (canvas_id,params) {
 
   // begin internal functions
   clear = function () {
+    // clear the canvas
     self.params.context.save();
     self.params.context.clearRect(0,0,self.params.canvas.width,self.params.canvas.height);
     self.params.context.restore();
   }
   point_distance = function(c1,c2) {
+    // return the distance between cartesian coordinates
     var v1,v2;
     v1 = c2.x-c1.x;
     v2 = c2.y-c1.y;
     return Math.sqrt(v1*v1+v2*v2);
   }
   resize_listener = function (in_canvas, prev) {
-    //console.log(last_dimensions.height);
+    // Polling function called to act if a resize has occured.
+    //  the do_resize is called other places too in instances where a resize has
+    //  occured but not been processed
     if (in_canvas.height !== prev.height || in_canvas.width !== prev.width) {
       self.do_resize();
     }
     prev = {height:in_canvas.height,width:in_canvas.width};
   }
   this.do_resize = function () {
+    //handle a window resize.  add more columns and rows as necessary to fill out the canvas
     var i,curr;
-    //console.log(self.mat.val.length+','+self.row_count());
     while(self.mat.val.length < self.canvas_row_count()) {
       self.mat.val.push([]);
     }
@@ -84,6 +88,7 @@ CA6.Grid = function (canvas_id,params) {
     //draw_grid();
   }
   update_mouse_position = function (e) {
+    // upon mouse move update mouse variables
     var loc;
     mouse.last_m = mouse.m;
     mouse.last_n = mouse.n;
@@ -98,6 +103,7 @@ CA6.Grid = function (canvas_id,params) {
     //console.log(mouse.x+','+mouse.y+'  '+mouse.m+','+mouse.n)
   }
   coord_to_row_col = function(x,y) { // canvas coordinate to m n fo hexagon
+    // useful for converting coordinate for mouse
     var r,d, m_approx, n_approx, n_init,i,j,ms,ns, coord;
     var best_dist,dist,best_m_offset, best_n_offset, m0, m1;
     x -= grid_offset.x;
